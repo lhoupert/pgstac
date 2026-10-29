@@ -159,7 +159,7 @@ jobs:
         with:
           platforms: linux/amd64,linux/arm64
           context: .
-          target: pypgstac
+          target: pypgstac-runtime
           file: docker/pypgstac/Dockerfile
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}

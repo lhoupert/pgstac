@@ -42,3 +42,27 @@ RUN addgroup --gid 1000 user && \
     adduser --uid 1000 --gid 1000 --disabled-password --gecos "" --home /home/user user && \
     chown -R user:user /opt/src/pypgstac /opt/src/pgstac
 USER user
+
+# Runtime image published as pgstac-pypgstac: the pypgstac CLI, the Postgres client tools and the
+# repo's helper scripts, without the Rust/C toolchain, dev/test/docs extras and uv cache of the stages above.
+# Same Debian release as pyrustbase, so its pgdg apt source applies unchanged.
+FROM python:3.13-slim-trixie AS pypgstac-runtime
+ARG PG_MAJOR=17
+ENV PATH="/opt/docker/pypgstac/bin:$PATH"
+COPY --from=pyrustbase /usr/share/keyrings/pgdg.gpg /usr/share/keyrings/pgdg.gpg
+COPY --from=pyrustbase /etc/apt/sources.list.d/pgdg.list /etc/apt/sources.list.d/pgdg.list
+RUN \
+    apt-get update \
+    && apt-get upgrade -y \
+    && apt-get install -y --no-install-recommends postgresql-client-${PG_MAJOR} \
+    && rm -rf /var/lib/apt/lists/*
+COPY docker/pypgstac/bin /opt/docker/pypgstac/bin
+COPY src/pypgstac /opt/src/pypgstac
+COPY src/pgstac /opt/src/pgstac
+# psycopg without the binary extra uses the libpq5 from apt, not the libraries bundled in its
+# wheel, smart-open[http] keeps loading from http(s) URLs working, and nothing calls pip once
+# pypgstac is installed.
+RUN pip install --no-cache-dir /opt/src/pypgstac "smart-open[http]" psycopg psycopg-pool \
+    && python -m pip uninstall -y pip setuptools wheel
+RUN adduser --uid 1000 --disabled-password --gecos "" user
+USER 1000:1000

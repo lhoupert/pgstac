@@ -6,6 +6,14 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
 
+## [Unreleased]
+
+### Changed
+- The published `pgstac-pypgstac` image now builds from a new `pypgstac-runtime` Docker target with
+  the `pypgstac` CLI, the Postgres client tools and the helper scripts from `docker/pypgstac/bin`,
+  without the build toolchain, the dev extras or pip. It uses `libpq` from apt through `psycopg`
+  rather than `psycopg[binary]`. Use the `pypgstac` target for development.
+
 ## [v0.10.0]
 
 ### Upgrading
