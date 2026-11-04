@@ -130,3 +130,32 @@ jobs:
         run: |
           export PATH=/opt/docker/pypgstac/bin:$PATH
           ./test
+
+  # release.yml only builds this target when a tag is pushed, so catch a broken one here.
+  runtimeimage:
+    name: Build the published pypgstac image and migrate with it
+    needs: [images, buildpg]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    services:
+      postgres:
+        env:
+          POSTGRES_PASSWORD: postgres
+        image: ${{ needs.images.outputs.pgdocker }}
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - run: docker build --target pypgstac-runtime -f docker/pypgstac/Dockerfile -t pypgstac-runtime .
+      - run: >-
+          docker run --rm --network host
+          -e PGHOST=127.0.0.1 -e PGUSER=postgres -e PGPASSWORD=postgres -e PGDATABASE=postgres
+          pypgstac-runtime pypgstac migrate
